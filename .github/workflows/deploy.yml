@@ -35,7 +35,7 @@ jobs:
         uses: cypress-io/github-action@v5
         with:
           command: npm run test:e2e
-          start: npm start
+          start: npm start-prod
           wait-on: http://localhost:8080
 
       - name: Trigger deployment
@@ -79,4 +79,4 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         uses: "Ilshidur/action-discord@d2594079a10f1d6739ee50a2471f0ca57418b554"
         with:
-          args: "The project {{ EVENT_PAYLOAD.repository.full_name }} has been deployed"
+          args: "The project {{ EVENT_PAYLOAD.repository.full_name }} has been deployed to ${{ secrets.DEPLOY_URL }}"
