@@ -1,0 +1,82 @@
+name: Deployment pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize]
+
+jobs:
+  simple_deployment_pipeline:
+    if: |
+      !(github.event_name == 'pull_request' &&
+        (contains(github.event.pull_request.title, '#skip') ||
+         contains(github.event.pull_request.body, '#skip')))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Check style
+        run: npm run eslint
+
+      - name: Build
+        run: npm run build
+
+      - name: e2e tests
+        uses: cypress-io/github-action@v5
+        with:
+          command: npm run test:e2e
+          start: npm start
+          wait-on: http://localhost:8080
+
+      - name: Trigger deployment
+        if: |
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main' &&
+          !contains(github.event.head_commit.message, '#skip')
+        run: curl "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+      - name: Notify Discord on Failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: "Ilshidur/action-discord@d2594079a10f1d6739ee50a2471f0ca57418b554"
+        with:
+          args: "Build failed, commit ${{ github.server_url }}/${{ github.repository }}/commit/${{ github.event.head_commit.id }} by ${{ github.event.head_commit.author.name }} broke the build :("
+
+  tag_release:
+    needs: [simple_deployment_pipeline]
+    if: |
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      !contains(github.event.head_commit.message, '#skip')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version and push tag
+        uses: anothrNick/github-tag-action@1.73.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          TAG_PREFIX: v
+          DRY_RUN: "false"
+
+      - name: Notify Discord on Deployment Success
+        if: success()
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: "Ilshidur/action-discord@d2594079a10f1d6739ee50a2471f0ca57418b554"
+        with:
+          args: "The project {{ EVENT_PAYLOAD.repository.full_name }} has been deployed"
