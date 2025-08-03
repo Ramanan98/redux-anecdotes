@@ -35,7 +35,7 @@ jobs:
         uses: cypress-io/github-action@v5
         with:
           command: npm run test:e2e
-          start: npm start-prod
+          start: npm run start-prod
           wait-on: http://localhost:8080
 
       - name: Trigger deployment
