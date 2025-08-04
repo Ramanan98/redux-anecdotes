@@ -40,7 +40,7 @@ app.post('/api/anecdotes/vote', (req, res) => {
 })
 
 app.get('/version', (req, res) => {
-  res.send('0.0.2') // change this string to ensure a new version deployed
+  res.send('0.0.3 — @mluukkai approved :)') // change this string to ensure a new version deployed
 })
 
 app.get('/health', (req, res) => {
